@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Rating</title>
+<style>
+  :root {
+    --accent: #00e28a;
+    --bg: #1a1a1a;
+    --text: #ffffff;
+    --star-inactive: #3a3a3a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #1f1f1f;
+    font-family: "Segoe UI", Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+  }
+  .card {
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 36px;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 0 18px rgba(0, 226, 138, 0.15);
+  }
+  .card h2 {
+    color: var(--text);
+    font-size: 20px;
+    margin: 0 0 20px 0;
+  }
+  .stars {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .star {
+    font-size: 40px;
+    line-height: 1;
+    color: var(--star-inactive);
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.15s ease;
+    user-select: none;
+  }
+  .star.active,
+  .star.hover {
+    color: var(--accent);
+    transform: scale(1.08);
+  }
+  .submit-btn {
+    background: var(--accent);
+    color: #1f1f1f;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+  }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:active { transform: scale(0.97); }
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 14px;
+    font-size: 14px;
+    color: var(--accent);
+    min-height: 18px;
+  }
+  .status.error { color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>How valuable was this course?</h2>
+    <div class="stars" id="stars">
+      <span class="star" data-value="1">&#9733;</span>
+      <span class="star" data-value="2">&#9733;</span>
+      <span class="star" data-value="3">&#9733;</span>
+      <span class="star" data-value="4">&#9733;</span>
+      <span class="star" data-value="5">&#9733;</span>
+    </div>
+    <button class="submit-btn" id="submitBtn">Submit Feedback</button>
+    <div class="status" id="status"></div>
+  </div>
+
+<script>
+  // Power Automate HTTP trigger URL
+  const SUBMIT_URL = "https://0458ee4aa906e0628640d9914f2d48.4c.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/23/workflows/79598760d6c1456f890bd675b84860f7/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=yI5chaaQfEF65TVd4DxT9AalqzWnvvko-KLP1DEw5Cc";
+
+  // Gets the SharePoint page title
+  const PAGE_NAME = "AI in Marketing";
+
+  let selectedRating = 0;
+  const starEls = document.querySelectorAll(".star");
+  const submitBtn = document.getElementById("submitBtn");
+  const statusEl = document.getElementById("status");
+
+  function paintStars(value) {
+    starEls.forEach(star => {
+      const v = parseInt(star.dataset.value, 10);
+      star.classList.toggle("active", v <= value);
+    });
+  }
+
+  starEls.forEach(star => {
+    star.addEventListener("mouseenter", () => {
+      paintStars(parseInt(star.dataset.value, 10));
+    });
+
+    star.addEventListener("mouseleave", () => {
+      paintStars(selectedRating);
+    });
+
+    star.addEventListener("click", () => {
+      selectedRating = parseInt(star.dataset.value, 10);
+      paintStars(selectedRating);
+    });
+  });
+
+  submitBtn.addEventListener("click", async () => {
+
+    if (!selectedRating) {
+      statusEl.textContent = "Please select a star rating first.";
+      statusEl.classList.add("error");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    statusEl.classList.remove("error");
+    statusEl.textContent = "Submitting...";
+
+    const payload = {
+      pageName: PAGE_NAME,
+      rating: selectedRating,
+      submittedAt: new Date().toISOString()
+    };
+
+    try {
+
+      const response = await fetch(SUBMIT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      statusEl.textContent = "Thanks for your feedback!";
+      submitBtn.textContent = "Submitted";
+
+    } catch (error) {
+
+      statusEl.textContent = "Something went wrong. Please try again.";
+      statusEl.classList.add("error");
+      submitBtn.disabled = false;
+
+      console.error(error);
+    }
+
+  });
+</script>
+
